@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import styles from "./DSAPreparationSheet.module.css"
 import { ChevronDown, ChevronRight, ExternalLink, BookOpen, Target, Clock, Users } from "lucide-react"
 
@@ -614,6 +614,28 @@ const studyTips = [
 export default function DSAPreparationSheet() {
   const [expandedSections, setExpandedSections] = useState(new Set([0]))
   const [expandedTips, setExpandedTips] = useState(new Set())
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+
+      if (currentScrollY < lastScrollY || currentScrollY < 100) {
+        // Scrolling up or near top
+        setIsHeaderVisible(true)
+      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        // Scrolling down and past threshold
+        setIsHeaderVisible(false)
+      }
+
+      setLastScrollY(currentScrollY)
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true })
+
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [lastScrollY])
 
   const toggleSection = (index) => {
     const newExpanded = new Set(expandedSections)
@@ -637,7 +659,7 @@ export default function DSAPreparationSheet() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
+      <header className={`${styles.header} ${!isHeaderVisible ? styles.headerHidden : ""}`}>
         <div className={styles.headerContent}>
           <h1 className={styles.title}>SDE Intern DSA Preparation Sheet</h1>
           <p className={styles.subtitle}>Easy–Medium Level Problems for Technical Interviews</p>

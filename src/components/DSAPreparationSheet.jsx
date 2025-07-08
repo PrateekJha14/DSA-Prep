@@ -616,6 +616,11 @@ export default function DSAPreparationSheet() {
   const [expandedTips, setExpandedTips] = useState(new Set())
   const [isHeaderVisible, setIsHeaderVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
+  const [completedProblems, setCompletedProblems] = useState(new Set())
+  const [problemNotes, setProblemNotes] = useState({})
+  const [expandedNotes, setExpandedNotes] = useState(new Set())
+  const [starredProblems, setStarredProblems] = useState(new Set())
+  const [bookmarkedProblems, setBookmarkedProblems] = useState(new Set())
 
   useEffect(() => {
     const handleScroll = () => {
@@ -637,6 +642,32 @@ export default function DSAPreparationSheet() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [lastScrollY])
 
+  useEffect(() => {
+    // Load completed problems from localStorage
+    const savedCompleted = localStorage.getItem("dsaCompletedProblems")
+    if (savedCompleted) {
+      setCompletedProblems(new Set(JSON.parse(savedCompleted)))
+    }
+
+    // Load notes from localStorage
+    const savedNotes = localStorage.getItem("dsaProblemNotes")
+    if (savedNotes) {
+      setProblemNotes(JSON.parse(savedNotes))
+    }
+
+    // Load starred problems from localStorage
+    const savedStarred = localStorage.getItem("dsaStarredProblems")
+    if (savedStarred) {
+      setStarredProblems(new Set(JSON.parse(savedStarred)))
+    }
+
+    // Load bookmarked problems from localStorage
+    const savedBookmarked = localStorage.getItem("dsaBookmarkedProblems")
+    if (savedBookmarked) {
+      setBookmarkedProblems(new Set(JSON.parse(savedBookmarked)))
+    }
+  }, [])
+
   const toggleSection = (index) => {
     const newExpanded = new Set(expandedSections)
     if (newExpanded.has(index)) {
@@ -655,6 +686,72 @@ export default function DSAPreparationSheet() {
       newExpanded.add(index)
     }
     setExpandedTips(newExpanded)
+  }
+
+  const toggleProblemCompletion = (sectionIndex, problemIndex) => {
+    const problemId = `${sectionIndex}-${problemIndex}`
+    const newCompleted = new Set(completedProblems)
+
+    if (newCompleted.has(problemId)) {
+      newCompleted.delete(problemId)
+    } else {
+      newCompleted.add(problemId)
+    }
+
+    setCompletedProblems(newCompleted)
+
+    // Save to localStorage
+    localStorage.setItem("dsaCompletedProblems", JSON.stringify([...newCompleted]))
+  }
+
+  const updateProblemNotes = (sectionIndex, problemIndex, notes) => {
+    const problemId = `${sectionIndex}-${problemIndex}`
+    const newNotes = { ...problemNotes, [problemId]: notes }
+    setProblemNotes(newNotes)
+
+    // Save to localStorage
+    localStorage.setItem("dsaProblemNotes", JSON.stringify(newNotes))
+  }
+
+  const toggleNotesExpansion = (sectionIndex, problemIndex) => {
+    const problemId = `${sectionIndex}-${problemIndex}`
+    const newExpanded = new Set(expandedNotes)
+
+    if (newExpanded.has(problemId)) {
+      newExpanded.delete(problemId)
+    } else {
+      newExpanded.add(problemId)
+    }
+
+    setExpandedNotes(newExpanded)
+  }
+
+  const toggleProblemStar = (sectionIndex, problemIndex) => {
+    const problemId = `${sectionIndex}-${problemIndex}`
+    const newStarred = new Set(starredProblems)
+
+    if (newStarred.has(problemId)) {
+      newStarred.delete(problemId)
+    } else {
+      newStarred.add(problemId)
+    }
+
+    setStarredProblems(newStarred)
+    localStorage.setItem("dsaStarredProblems", JSON.stringify([...newStarred]))
+  }
+
+  const toggleProblemBookmark = (sectionIndex, problemIndex) => {
+    const problemId = `${sectionIndex}-${problemIndex}`
+    const newBookmarked = new Set(bookmarkedProblems)
+
+    if (newBookmarked.has(problemId)) {
+      newBookmarked.delete(problemId)
+    } else {
+      newBookmarked.add(problemId)
+    }
+
+    setBookmarkedProblems(newBookmarked)
+    localStorage.setItem("dsaBookmarkedProblems", JSON.stringify([...newBookmarked]))
   }
 
   return (
@@ -701,27 +798,90 @@ export default function DSAPreparationSheet() {
 
             {expandedSections.has(sectionIndex) && (
               <div className={styles.problemsGrid}>
-                {section.problems.map((problem, problemIndex) => (
-                  <div key={problemIndex} className={styles.problemCard}>
-                    <h3 className={styles.problemTitle}>{problem.title}</h3>
-                    <p className={styles.problemDescription}>{problem.description}</p>
-                    <div className={styles.problemLinks}>
-                      {problem.links.map((link, linkIndex) => (
-                        <a
-                          key={linkIndex}
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={styles.problemLink}
-                        >
-                          <span>{link.platform}</span>
-                          {link.problemNumber && <span className={styles.problemNumber}>#{link.problemNumber}</span>}
-                          <ExternalLink className={styles.externalIcon} />
-                        </a>
-                      ))}
+                {section.problems.map((problem, problemIndex) => {
+                  const problemId = `${sectionIndex}-${problemIndex}`
+                  const isCompleted = completedProblems.has(problemId)
+                  const isStarred = starredProblems.has(problemId)
+                  const isBookmarked = bookmarkedProblems.has(problemId)
+                  const hasNotes = problemNotes[problemId]?.trim()
+                  const isNotesExpanded = expandedNotes.has(problemId)
+
+                  return (
+                    <div
+                      key={problemIndex}
+                      className={`${styles.problemCard} ${isCompleted ? styles.problemCompleted : ""} ${isStarred ? styles.starred : ""} ${isBookmarked ? styles.bookmarked : ""}`}
+                    >
+                      <div className={styles.problemHeader}>
+                        <div className={styles.problemTitleContainer}>
+                          <button
+                            className={`${styles.checkboxButton} ${isCompleted ? styles.checkboxCompleted : ""}`}
+                            onClick={() => toggleProblemCompletion(sectionIndex, problemIndex)}
+                            aria-label={isCompleted ? "Mark as incomplete" : "Mark as complete"}
+                          >
+                            {isCompleted && <span className={styles.checkmark}>✓</span>}
+                          </button>
+                          <h3 className={styles.problemTitle}>{problem.title}</h3>
+                        </div>
+                        <div className={styles.problemActions}>
+                          <button
+                            className={`${styles.actionButton} ${isStarred ? styles.starred : ""}`}
+                            onClick={() => toggleProblemStar(sectionIndex, problemIndex)}
+                            aria-label={isStarred ? "Remove from revisit later" : "Mark to revisit later"}
+                            title={isStarred ? "Remove from revisit later" : "Mark to revisit later"}
+                          >
+                            ⭐
+                          </button>
+                          <button
+                            className={`${styles.actionButton} ${isBookmarked ? styles.bookmarked : ""}`}
+                            onClick={() => toggleProblemBookmark(sectionIndex, problemIndex)}
+                            aria-label={isBookmarked ? "Remove bookmark" : "Bookmark this problem"}
+                            title={isBookmarked ? "Remove bookmark" : "Bookmark this problem"}
+                          >
+                            🔖
+                          </button>
+                          <button
+                            className={`${styles.actionButton} ${styles.notesToggle} ${hasNotes ? styles.hasNotes : ""}`}
+                            onClick={() => toggleNotesExpansion(sectionIndex, problemIndex)}
+                            aria-label="Toggle notes"
+                            title="Add/view notes"
+                          >
+                            📝
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className={styles.problemDescription}>{problem.description}</p>
+
+                      <div className={styles.problemLinks}>
+                        {problem.links.map((link, linkIndex) => (
+                          <a
+                            key={linkIndex}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.problemLink}
+                          >
+                            <span>{link.platform}</span>
+                            {link.problemNumber && <span className={styles.problemNumber}>#{link.problemNumber}</span>}
+                            <ExternalLink className={styles.externalIcon} />
+                          </a>
+                        ))}
+                      </div>
+
+                      {isNotesExpanded && (
+                        <div className={styles.notesSection}>
+                          <textarea
+                            className={styles.notesTextarea}
+                            placeholder="Add your notes, approach, time complexity, or any important points..."
+                            value={problemNotes[problemId] || ""}
+                            onChange={(e) => updateProblemNotes(sectionIndex, problemIndex, e.target.value)}
+                            rows={4}
+                          />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </section>
